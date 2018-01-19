@@ -277,7 +277,7 @@ if total_actual_percent != 100:
 ##################################################################################################
 # Now generate the model portfolio III report
 #
-def mp3line(symbol, name, desired_percent, actual_percent, desired_dollars, actual_dollars):
+def mp3line(symbol, name, desired_percent, actual_percent, desired_dollars, actual_dollars, diff_dollars):
     '''Formatter for lines in the Model Portfolio III report'''
     if isinstance(desired_percent, int):
         desired_percent = str(desired_percent)
@@ -287,12 +287,15 @@ def mp3line(symbol, name, desired_percent, actual_percent, desired_dollars, actu
         desired_dollars = float_to_printable_str(desired_dollars)
     if isinstance(actual_dollars, float):
         actual_dollars = float_to_printable_str(actual_dollars)
+    if isinstance(diff_dollars, float):
+        diff_dollars = float_to_printable_str(diff_dollars)
     print '%-6s' % symbol, \
           '%-35s' % name, \
           '%9s' % desired_percent, \
           '%8s' % actual_percent, \
           '%13s' % desired_dollars, \
-          '%12s' % actual_dollars
+          '%12s' % actual_dollars, \
+          '%12s' % diff_dollars
 
 def mp3_columns():
     '''Display horizontal lines in the Model Portfolio III report'''
@@ -301,36 +304,38 @@ def mp3_columns():
             '---------',
             '--------',
             '-------------',
-            '------------'
+            '------------',
+            '------------',
            )
 
 print '\n                                MODEL PORTFOLIO III\n'
 mp3_columns()
-mp3line('Symbol', 'Security Name', 'Desired %', 'Actual %', 'Desired $', 'Actual $')
+mp3line('Symbol', 'Security Name', 'Desired %', 'Actual %', 'Desired $', 'Actual $', 'Difference $')
 mp3_columns()
 total_desired_value = 0
 total_desired_percent = 0
 total_actual_percent = 0
 total_actual_value = 0
 for key in MODEL_PORTFOLIO_III:
-    desiredpercent = MODEL_PORTFOLIO_III[key].percent
-    total_desired_percent += desiredpercent
+    desired_percent = MODEL_PORTFOLIO_III[key].percent
+    total_desired_percent += desired_percent
 
-    desiredvalue = networth * desiredpercent / 100
-    total_desired_value += desiredvalue
+    desired_value = networth * desired_percent / 100
+    total_desired_value += desired_value
 
-    actualpercent = Percent(actual_holdings[key], networth)
-    total_actual_percent += actualpercent.value
+    actual_percent = Percent(actual_holdings[key], networth)
+    total_actual_percent += actual_percent.value
 
     total_actual_value += actual_holdings[key]
     mp3line(key,
             MODEL_PORTFOLIO_III[key].name,
-            desiredpercent,
-            actualpercent.value,
-            desiredvalue,
-            actual_holdings[key]
+            desired_percent,
+            actual_percent.value,
+            desired_value,
+            actual_holdings[key],
+            actual_holdings[key] - desired_value
            )
-mp3line('Cash', '', '', '', cash, cash)
+mp3line('Cash', '', '', '', cash, cash, '')
 total_actual_value += cash
 total_desired_value += cash
 mp3_columns()
@@ -339,7 +344,8 @@ mp3line('Total',
         total_desired_percent,
         total_actual_percent,
         total_desired_value,
-        total_actual_value
+        total_actual_value,
+        ''
        )
 
 if int((total_actual_value + 0.005) * 100) != int((total_desired_value + 0.005) * 100):
