@@ -28,21 +28,9 @@ holdings to cover short-term (1 to 2 years) living expenses and don't count them
 """
 
 ##################################################################################################
-#pylint:disable=too-few-public-methods
-#pylint:disable=too-many-arguments
-#pylint:disable=invalid-name
-
-##################################################################################################
 
 import sys
 import re
-
-##################################################################################################
-class Security(object):
-    '''Simple class to contain security name and balance'''
-    def __init__(self, name, balance):
-        self.name = name
-        self.balance = balance
 
 ##################################################################################################
 # The MODEL_PORTFOLIO_III dictionary contains the recommended Model Portfolio III
@@ -51,20 +39,14 @@ class Security(object):
 # These values reflect the portfolio recommendations as of January 2018.
 #
 
-class RecommendedSecurity(object):
-    '''simple class to contain a recommended security name and recommended percentage'''
-    def __init__(self, name, percentage):
-        self.name = name
-        self.percent = percentage
-
 MODEL_PORTFOLIO_III = {}
-MODEL_PORTFOLIO_III['AKREX'] = RecommendedSecurity('Akre Focus Fund', 5)
-MODEL_PORTFOLIO_III['VDAIX'] = RecommendedSecurity('Vanguard Dividend Appreciation', 5)
-MODEL_PORTFOLIO_III['VFWIX'] = RecommendedSecurity('Vanguard FTSE All-World', 10)
-MODEL_PORTFOLIO_III['VTSMX'] = RecommendedSecurity('Vanguard Total Stock Market', 30)
-MODEL_PORTFOLIO_III['DLSNX'] = RecommendedSecurity('DoubleLine Low Duration Bond', 20)
-MODEL_PORTFOLIO_III['MWCRX'] = RecommendedSecurity('MetroWest Unconstrained Bond', 20)
-MODEL_PORTFOLIO_III['OSTIX'] = RecommendedSecurity('Osterweis Strategic Income Fund', 10)
+MODEL_PORTFOLIO_III['AKREX'] = {'name':'Akre Focus Fund', 'percent':5}
+MODEL_PORTFOLIO_III['VDAIX'] = {'name':'Vanguard Dividend Appreciation', 'percent':5}
+MODEL_PORTFOLIO_III['VFWIX'] = {'name':'Vanguard FTSE All-World', 'percent':10}
+MODEL_PORTFOLIO_III['VTSMX'] = {'name':'Vanguard Total Stock Market', 'percent':30}
+MODEL_PORTFOLIO_III['DLSNX'] = {'name':'DoubleLine Low Duration Bond', 'percent':20}
+MODEL_PORTFOLIO_III['MWCRX'] = {'name':'MetroWest Unconstrained Bond', 'percent':20}
+MODEL_PORTFOLIO_III['OSTIX'] = {'name':'Osterweis Strategic Income Fund', 'percent':10}
 
 ##################################################################################################
 # The MAP_SECURITY dictionary maps a non-Model Portfolio III security symbol to the corresponding
@@ -72,13 +54,21 @@ MODEL_PORTFOLIO_III['OSTIX'] = RecommendedSecurity('Osterweis Strategic Income F
 # must be a key symbol in the MODEL_PORTFOLIO_III dictionary.
 #
 MAP_SECURITY = {}
-MAP_SECURITY['FSHBX'] = 'DLSNX'
-MAP_SECURITY['FSICX'] = 'OSTIX'
-MAP_SECURITY['SU'] = 'VTSMX'
-MAP_SECURITY['QQQQ'] = 'VTSMX'
-MAP_SECURITY['FUSVX'] = 'VTSMX'
-MAP_SECURITY['FSTVX'] = 'VTSMX'
-MAP_SECURITY['HONEYWEL:750021:TS'] = 'VTSMX'
+def add_map(symbol, mp3_symbol):
+    '''!'''
+    if mp3_symbol in MODEL_PORTFOLIO_III:
+        MAP_SECURITY[symbol] = mp3_symbol
+    else:
+        print "No symbol", mp3_symbol, "in MODEL_PORTFOLIO_III."
+        exit()
+
+add_map('FSHBX', 'DLSNX')
+add_map('FSICX', 'OSTIX')
+add_map('SU', 'VTSMX')
+add_map('QQQQ', 'VTSMX')
+add_map('FUSVX', 'VTSMX')
+add_map('FSTVX', 'VTSMX')
+add_map('HONEYWEL:750021:TS', 'VTSMX')
 
 def map_key_to_mp3(key2map):
     '''Map a security symbol to its matching symbol in Model Portfolio III'''
@@ -90,270 +80,251 @@ def map_key_to_mp3(key2map):
     exit()
 
 ##################################################################################################
-# The following objects use regular expressions to parse the lines of the Quicken report
-#
+def read_input_file(input_file):
+    '''!'''
+    ##############################################################################################
+    def title_parse_pattern(input_line):
+        '''matching function to recognize the title line of the portforlio value report'''
+        mymatch = re.compile(r'Portfolio Value - As of (\d+\/\d+\/\d+)').match(input_line)
+        if mymatch is None:
+            return None
+        return mymatch.group(1)
 
-class ParsePattern(object):
-    '''simple base class to support regular expression parsing of the input file
-       this is intended as a subclass of the classes below
-    '''
-    def __init__(self, regex):
-        self.__pattern = re.compile(regex)
+    ##############################################################################################
+    def cash_parse_pattern(input_line):
+        '''matching function to recognize the cash line of the portforlio value report'''
+        mymatch = re.compile(r'\t+-Cash-\t+(\d+(,\d\d\d)*.\d\d)').match(input_line)
+        if mymatch is None:
+            return None
+        return float(mymatch.group(1).replace(',', ''))
 
-    def match(self, input_line):
-        '''execute the pattern match'''
-        return self.__pattern.match(input_line)
+    ##############################################################################################
+    def security_parse_pattern(input_line):
+        '''matching function to recognize the security lines of the portforlio value report'''
+        mymatch = re.compile(r'\t+([\w\- ]+)\t+([A-Z0-9:]*)'
+                             r'\t(\d+(,\d\d\d)*.\d\d\d)'
+                             r'\t(\d+.\d\d\d)'
+                             r'\t\*?'
+                             r'\t+(-?\d+(,\d\d\d)*.\d\d)'
+                             r'\t+(-?\d+(,\d\d\d)*.\d\d)\*?'
+                             r'\t+(\d+(,\d\d\d)*.\d\d)'
+                            ).match(input_line)
+        if mymatch is None:
+            return None
+        return {'name':mymatch.group(1),
+                'symbol':mymatch.group(2),
+                'balance':float(mymatch.group(10).replace(',', ''))
+               }
 
-##################################################################################################
-class TitleParsePattern(ParsePattern):
-    '''pattern matching class to recognize the title line of the portforlio value report'''
-    def __init__(self):
-        ParsePattern.__init__(self, r'Portfolio Value - As of (\d+\/\d+\/\d+)')
-        # define group numbers for the fields of interest matching the pattern
-        self.__report_date_group = 1
-        self.report_date = None
-
-    def match(self, input_line):
-        mtch = ParsePattern.match(self, input_line)
-        if mtch is None:
-            return False
-        else:
-            self.report_date = mtch.group(self.__report_date_group)
-            return True
-
-##################################################################################################
-class CashParsePattern(ParsePattern):
-    '''pattern matching class to recognize the cash line of the portforlio value report'''
-    def __init__(self):
-        ParsePattern.__init__(self, r'\t+-Cash-\t+(\d+(,\d\d\d)*.\d\d)')
-        # define group numbers for the fields of interest matching the pattern
-        self.__cash_value_group = 1
-        self.cash_value = None
-
-    def match(self, input_line):
-        mtch = ParsePattern.match(self, input_line)
-        if mtch is None:
-            return False
-        else:
-            self.cash_value = float(mtch.group(self.__cash_value_group).replace(',', ''))
-            return True
-
-##################################################################################################
-class SecurityParsePattern(ParsePattern):
-    '''pattern matching class to recognize the security lines of the portforlio value report'''
-    def __init__(self):
-        ParsePattern.__init__(self,
-                              r'\t+([\w\- ]+)\t+([A-Z0-9:]*)'
-                              r'\t(\d+(,\d\d\d)*.\d\d\d)'
-                              r'\t(\d+.\d\d\d)'
-                              r'\t\*?'
-                              r'\t+(-?\d+(,\d\d\d)*.\d\d)'
-                              r'\t+(-?\d+(,\d\d\d)*.\d\d)\*?'
-                              r'\t+(\d+(,\d\d\d)*.\d\d)'
-                             )
-        # define group numbers for the fields of interest matching the pattern
-        self.__security_name_group = 1
-        self.__security_symbol_group = 2
-        self.__security_dollars_group = 10
-        self.symbol = None
-        self.name = None
-        self.dollars = None
-
-    def match(self, input_line):
-        mtch = ParsePattern.match(self, input_line)
-        if mtch is None:
-            return False
-        else:
-            self.symbol = mtch.group(self.__security_symbol_group)
-            self.name = mtch.group(self.__security_name_group)
-            self.dollars = float(mtch.group(self.__security_dollars_group).replace(',', ''))
-            return True
-
-##################################################################################################
-# Ignore input lines that match the following patterns...
-IGNORE_PATTERNS = [re.compile(r'\s*$'),
-                   re.compile(r'\tSecurity\tSymbol\tShares\tQuote/Price\test\tCost'),
-                   re.compile(r'\t\*Placeholder'),
-                   re.compile(r'\t\TOTAL Investments')
-                  ]
-
-##################################################################################################
-security_dict = {}
-with open(sys.argv[1], 'r') as fhandle:
-    for line in iter(fhandle):
-        title_pattern = TitleParsePattern()
-        if title_pattern.match(line):
-            report_date = title_pattern.report_date
-            continue
-        cash_pattern = CashParsePattern()
-        if cash_pattern.match(line):
-            cash = cash_pattern.cash_value
-            continue
-        security_pattern = SecurityParsePattern()
-        if security_pattern.match(line):
-            if security_pattern.symbol:
-                security_dict[security_pattern.symbol] = \
-                    Security(security_pattern.name, security_pattern.dollars)
+    security_dict = {}
+    with open(input_file, 'r') as fhandle:
+        for line in iter(fhandle):
+            parse_result = title_parse_pattern(line)
+            if parse_result is not None:
+                report_date = parse_result
+                continue
+            parse_result = cash_parse_pattern(line)
+            if parse_result is not None:
+                cash = parse_result
+                continue
+            parse_dict = security_parse_pattern(line)
+            if parse_dict is not None:
+                if parse_dict['symbol']:
+                    security_dict[parse_dict['symbol']] = \
+                        {'name':parse_dict['name'], 'balance':parse_dict['balance']}
+                else:
+                    #There is no stock symbol on the input line.  This happens with a money
+                    #market entry with zero balance so I ignore it.
+                    pass
+                continue
+            for pattern in [re.compile(r'\s*$'),
+                            re.compile(r'\tSecurity\tSymbol\tShares\tQuote/Price\test\tCost'),
+                            re.compile(r'\t\*Placeholder'),
+                            re.compile(r'\t\TOTAL Investments')
+                           ]:
+                match = pattern.match(line)
+                if match:
+                    #ignore this line
+                    break
             else:
-                #There is no stock symbol on the input line.  This happens with a money
-                #market entry with zero balance so I ignore it.
-                pass
-            continue
-        pattern = None
-        for pattern in IGNORE_PATTERNS:
-            match = pattern.match(line)
-            if match:
-                break
-        if pattern is None:
-            print "Unexpected line-->"+line
-            exit()
+                print "Unexpected line-->"+line
+                exit()
 
-fhandle.close()
+    fhandle.close()
+    return (report_date, cash, security_dict)
 
 ##################################################################################################
-class Percent(object):
-    '''simple class to compute a percentage'''
-    def __init__(self, numerator, denominator):
-        self.value = int(numerator / denominator * 100 + 0.5)
+# generate a report of current holdings
+def current_holdings_report(report_date, cash, net_worth, security_dict):
+    '''!'''
+    ##############################################################################################
+    def holdings_line(symbol, name, dollars, percentage, mp3symbol):
+        '''format a line in the holdings report'''
+        if isinstance(dollars, float):
+            dollars = '%.2f' % dollars
+        if isinstance(percentage, int):
+            percentage = str(percentage)
+        print '%-18s' % symbol, \
+              '%-40s' % name, \
+              '%10s' % dollars, \
+              '%3s' % percentage, \
+              '%5s' % mp3symbol
+
+    ##############################################################################################
+    def holdings_columns():
+        '''dispaly horizontal lines in the holdings report'''
+        holdings_line('------------------',
+                      '----------------------------------------',
+                      '----------',
+                      '---',
+                      '-----'
+                     )
+
+    ##############################################################################################
+    print '\n                          ACTUAL HOLDINGS AS OF', report_date, '\n'
+    holdings_columns()
+    holdings_line('Symbol', 'Security Name', 'Value', '%', 'MPIII')
+    holdings_columns()
+
+    actual_holdings = {}
+    total_actual_percent = 0
+    for key in security_dict:
+        actualskey = map_key_to_mp3(key)
+        if actualskey in actual_holdings:
+            actual_holdings[actualskey] += security_dict[key]['balance']
+        else:
+            actual_holdings[actualskey] = security_dict[key]['balance']
+        actual_percent = int(security_dict[key]['balance'] / net_worth * 100 + 0.5)
+        total_actual_percent += actual_percent
+        holdings_line(key,
+                      security_dict[key]['name'],
+                      security_dict[key]['balance'],
+                      actual_percent,
+                      actualskey
+                     )
+
+    holdings_line('Cash', '', cash, '', '')
+    holdings_columns()
+    holdings_line('Total', '', net_worth+cash, total_actual_percent, '')
+    if total_actual_percent != 100:
+        print "Something is wrong. Total percent is not 100"
+    return actual_holdings
 
 ##################################################################################################
-def float_to_printable_str(fval):
-    '''format a float to a string with 2 decimal places'''
-    return '%.2f' % fval
+def mp3_report(cash, net_worth, actual_holdings):
+    '''!'''
+    ##############################################################################################
+    # Now generate the model portfolio III report
+    #
+    def mp3line(symbol,
+                name,
+                percent_desired,
+                percent_actual,
+                dollars_desired,
+                dollars_actual,
+                diff_dollars
+               ):
+        '''Formatter for lines in the Model Portfolio III report'''
+        if isinstance(percent_desired, int):
+            percent_desired = str(percent_desired)
+        if isinstance(percent_actual, int):
+            percent_actual = str(percent_actual)
+        if isinstance(dollars_desired, float):
+            dollars_desired = '%.2f' % dollars_desired
+        if isinstance(dollars_actual, float):
+            dollars_actual = '%.2f' % dollars_actual
+        if isinstance(diff_dollars, float):
+            diff_dollars = '%.2f' % diff_dollars
+        print '%-6s' % symbol, \
+              '%-35s' % name, \
+              '%9s' % percent_desired, \
+              '%8s' % percent_actual, \
+              '%13s' % dollars_desired, \
+              '%12s' % dollars_actual, \
+              '%12s' % diff_dollars
 
-##################################################################################################
-# parse the input file and generate a report of current holdings
-#
-def holdings_line(symbol, name, dollars, percentage, mp3symbol):
-    '''format a line in the holdings report'''
-    if isinstance(dollars, float):
-        dollars = float_to_printable_str(dollars)
-    if isinstance(percentage, int):
-        percentage = str(percentage)
-    print '%-18s' % symbol, '%-40s' % name, '%10s' % dollars, '%3s' % percentage, '%5s' % mp3symbol
+    def mp3_columns():
+        '''Display horizontal lines in the Model Portfolio III report'''
+        mp3line('------',
+                '-----------------------------------',
+                '---------',
+                '--------',
+                '-------------',
+                '------------',
+                '------------',
+               )
 
-def holdings_columns():
-    '''dispaly horizontal lines in the holdings report'''
-    holdings_line('------------------',
-                  '----------------------------------------',
-                  '----------',
-                  '---',
-                  '-----'
-                 )
+    print '\n                                MODEL PORTFOLIO III\n'
+    mp3_columns()
+    mp3line('Symbol',
+            'Security Name',
+            'Desired %',
+            'Actual %',
+            'Desired $',
+            'Actual $',
+            'Difference $'
+           )
+    mp3_columns()
+    total_desired_value = 0
+    total_desired_percent = 0
+    total_actual_percent = 0
+    total_actual_value = 0
+    for key in MODEL_PORTFOLIO_III:
+        desired_percent = MODEL_PORTFOLIO_III[key]['percent']
+        total_desired_percent += desired_percent
 
-##################################################################################################
-networth = 0
-for key in security_dict:
-    networth += security_dict[key].balance
+        desired_value = net_worth * desired_percent / 100
+        total_desired_value += desired_value
 
-print '\n                          ACTUAL HOLDINGS AS OF', report_date, '\n'
-holdings_columns()
-holdings_line('Symbol', 'Security Name', 'Value', '%', 'MPIII')
-holdings_columns()
+        actual_percent = int(actual_holdings[key] / net_worth * 100 + 0.5)
+        total_actual_percent += actual_percent
 
-actual_holdings = {}
-total_actual_percent = 0
-for key in security_dict:
-    actualskey = map_key_to_mp3(key)
-    if actualskey in actual_holdings:
-        actual_holdings[actualskey] += security_dict[key].balance
-    else:
-        actual_holdings[actualskey] = security_dict[key].balance
-    percent = Percent(security_dict[key].balance, networth)
-    total_actual_percent += percent.value
-    holdings_line(key,
-                  security_dict[key].name,
-                  security_dict[key].balance,
-                  percent.value,
-                  actualskey
-                 )
-
-holdings_line('Cash', '', cash, '', '')
-holdings_columns()
-holdings_line('Total', '', networth+cash, total_actual_percent, '')
-if total_actual_percent != 100:
-    print "Something is wrong. Total percent is not 100"
-
-##################################################################################################
-# Now generate the model portfolio III report
-#
-def mp3line(symbol, name, desired_percent, actual_percent, desired_dollars, actual_dollars, diff_dollars):
-    '''Formatter for lines in the Model Portfolio III report'''
-    if isinstance(desired_percent, int):
-        desired_percent = str(desired_percent)
-    if isinstance(actual_percent, int):
-        actual_percent = str(actual_percent)
-    if isinstance(desired_dollars, float):
-        desired_dollars = float_to_printable_str(desired_dollars)
-    if isinstance(actual_dollars, float):
-        actual_dollars = float_to_printable_str(actual_dollars)
-    if isinstance(diff_dollars, float):
-        diff_dollars = float_to_printable_str(diff_dollars)
-    print '%-6s' % symbol, \
-          '%-35s' % name, \
-          '%9s' % desired_percent, \
-          '%8s' % actual_percent, \
-          '%13s' % desired_dollars, \
-          '%12s' % actual_dollars, \
-          '%12s' % diff_dollars
-
-def mp3_columns():
-    '''Display horizontal lines in the Model Portfolio III report'''
-    mp3line('------',
-            '-----------------------------------',
-            '---------',
-            '--------',
-            '-------------',
-            '------------',
-            '------------',
+        total_actual_value += actual_holdings[key]
+        mp3line(key,
+                MODEL_PORTFOLIO_III[key]['name'],
+                desired_percent,
+                actual_percent,
+                desired_value,
+                actual_holdings[key],
+                actual_holdings[key] - desired_value
+               )
+    mp3line('Cash', '', '', '', cash, cash, '')
+    total_actual_value += cash
+    total_desired_value += cash
+    mp3_columns()
+    mp3line('Total',
+            '',
+            total_desired_percent,
+            total_actual_percent,
+            total_desired_value,
+            total_actual_value,
+            ''
            )
 
-print '\n                                MODEL PORTFOLIO III\n'
-mp3_columns()
-mp3line('Symbol', 'Security Name', 'Desired %', 'Actual %', 'Desired $', 'Actual $', 'Difference $')
-mp3_columns()
-total_desired_value = 0
-total_desired_percent = 0
-total_actual_percent = 0
-total_actual_value = 0
-for key in MODEL_PORTFOLIO_III:
-    desired_percent = MODEL_PORTFOLIO_III[key].percent
-    total_desired_percent += desired_percent
+    if int((total_actual_value + 0.005) * 100) != int((total_desired_value + 0.005) * 100):
+        print 'Something is wrong.  Things don\'t add up.'
+    if total_desired_percent != 100:
+        print 'Something is wrong. Total desired percent is not 100'
+    if total_actual_percent != 100:
+        print 'Something is wrong. Total actual percent is not 100'
 
-    desired_value = networth * desired_percent / 100
-    total_desired_value += desired_value
 
-    actual_percent = Percent(actual_holdings[key], networth)
-    total_actual_percent += actual_percent.value
+##################################################################################################
+def main():
+    '''!'''
 
-    total_actual_value += actual_holdings[key]
-    mp3line(key,
-            MODEL_PORTFOLIO_III[key].name,
-            desired_percent,
-            actual_percent.value,
-            desired_value,
-            actual_holdings[key],
-            actual_holdings[key] - desired_value
-           )
-mp3line('Cash', '', '', '', cash, cash, '')
-total_actual_value += cash
-total_desired_value += cash
-mp3_columns()
-mp3line('Total',
-        '',
-        total_desired_percent,
-        total_actual_percent,
-        total_desired_value,
-        total_actual_value,
-        ''
-       )
+    (report_date, cash, security_dict) = read_input_file(sys.argv[1])
 
-if int((total_actual_value + 0.005) * 100) != int((total_desired_value + 0.005) * 100):
-    print 'Something is wrong.  Things don\'t add up.'
-if total_desired_percent != 100:
-    print 'Something is wrong. Total desired percent is not 100'
-if total_actual_percent != 100:
-    print 'Something is wrong. Total actual percent is not 100'
+    net_worth = 0
+    for key in security_dict:
+        net_worth += security_dict[key]['balance']
+
+    actual_holdings = current_holdings_report(report_date, cash, net_worth, security_dict)
+
+    mp3_report(cash, net_worth, actual_holdings)
+
+##################################################################################################
+main()
 
 ##################################################################################################
 
