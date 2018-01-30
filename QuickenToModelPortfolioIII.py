@@ -54,10 +54,12 @@ MODEL_PORTFOLIO_III['OSTIX'] = {'name':'Osterweis Strategic Income Fund', 'perce
 # must be a key symbol in the MODEL_PORTFOLIO_III dictionary.
 #
 MAP_SECURITY = {}
+MAP_UNUSED = {}
 def add_map(symbol, mp3_symbol):
     '''!'''
     if mp3_symbol in MODEL_PORTFOLIO_III:
         MAP_SECURITY[symbol] = mp3_symbol
+        MAP_UNUSED[symbol] = 0
     else:
         print "No symbol", mp3_symbol, "in MODEL_PORTFOLIO_III."
         exit()
@@ -76,6 +78,7 @@ def map_key_to_mp3(key2map):
     if key2map in MODEL_PORTFOLIO_III:
         return key2map
     if key2map in MAP_SECURITY:
+        del MAP_UNUSED[key2map]
         return MAP_SECURITY[key2map]
     print 'No map for symbol', key2map
     exit()
@@ -227,7 +230,7 @@ def mp3_report(cash, net_worth, actual_holdings):
         if isinstance(percent_desired, int):
             percent_desired = str(percent_desired)
         if isinstance(percent_actual, float):
-            percent_actual =  '%.2f' % percent_actual
+            percent_actual = '%.2f' % percent_actual
         if isinstance(dollars_desired, float):
             dollars_desired = '%.2f' % dollars_desired
         if isinstance(dollars_actual, float):
@@ -321,6 +324,9 @@ def main():
     actual_holdings = current_holdings_report(report_date, cash, net_worth, security_dict)
 
     mp3_report(cash, net_worth, actual_holdings)
+
+    for key in MAP_UNUSED:
+        print "\nMap for", key, "was not used."
 
 ##################################################################################################
 main()
