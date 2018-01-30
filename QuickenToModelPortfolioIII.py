@@ -68,6 +68,7 @@ add_map('SU', 'VTSMX')
 add_map('QQQQ', 'VTSMX')
 add_map('FUSVX', 'VTSMX')
 add_map('FSTVX', 'VTSMX')
+add_map('FTBFX', 'MWCRX')
 add_map('HONEYWEL:750021:TS', 'VTSMX')
 
 def map_key_to_mp3(key2map):
@@ -162,12 +163,12 @@ def current_holdings_report(report_date, cash, net_worth, security_dict):
         '''format a line in the holdings report'''
         if isinstance(dollars, float):
             dollars = '%.2f' % dollars
-        if isinstance(percentage, int):
-            percentage = str(percentage)
+        if isinstance(percentage, float):
+            percentage = '%.2f' % percentage
         print '%-18s' % symbol, \
               '%-40s' % name, \
               '%10s' % dollars, \
-              '%3s' % percentage, \
+              '%6s' % percentage, \
               '%5s' % mp3symbol
 
     ##############################################################################################
@@ -176,7 +177,7 @@ def current_holdings_report(report_date, cash, net_worth, security_dict):
         holdings_line('------------------',
                       '----------------------------------------',
                       '----------',
-                      '---',
+                      '------',
                       '-----'
                      )
 
@@ -194,7 +195,7 @@ def current_holdings_report(report_date, cash, net_worth, security_dict):
             actual_holdings[actualskey] += security_dict[key]['balance']
         else:
             actual_holdings[actualskey] = security_dict[key]['balance']
-        actual_percent = int(security_dict[key]['balance'] / net_worth * 100 + 0.5)
+        actual_percent = security_dict[key]['balance'] / net_worth * 100
         total_actual_percent += actual_percent
         holdings_line(key,
                       security_dict[key]['name'],
@@ -206,8 +207,6 @@ def current_holdings_report(report_date, cash, net_worth, security_dict):
     holdings_line('Cash', '', cash, '', '')
     holdings_columns()
     holdings_line('Total', '', net_worth+cash, total_actual_percent, '')
-    if total_actual_percent != 100:
-        print "Something is wrong. Total percent is not 100"
     return actual_holdings
 
 ##################################################################################################
@@ -227,8 +226,8 @@ def mp3_report(cash, net_worth, actual_holdings):
         '''Formatter for lines in the Model Portfolio III report'''
         if isinstance(percent_desired, int):
             percent_desired = str(percent_desired)
-        if isinstance(percent_actual, int):
-            percent_actual = str(percent_actual)
+        if isinstance(percent_actual, float):
+            percent_actual =  '%.2f' % percent_actual
         if isinstance(dollars_desired, float):
             dollars_desired = '%.2f' % dollars_desired
         if isinstance(dollars_actual, float):
@@ -276,7 +275,7 @@ def mp3_report(cash, net_worth, actual_holdings):
         desired_value = net_worth * desired_percent / 100
         total_desired_value += desired_value
 
-        actual_percent = int(actual_holdings[key] / net_worth * 100 + 0.5)
+        actual_percent = actual_holdings[key] / net_worth * 100
         total_actual_percent += actual_percent
 
         total_actual_value += actual_holdings[key]
