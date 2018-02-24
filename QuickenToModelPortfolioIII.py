@@ -61,7 +61,7 @@ def add_map(symbol, mp3_symbol):
         MAP_SECURITY[symbol] = mp3_symbol
         MAP_UNUSED[symbol] = 0
     else:
-        print "No symbol", mp3_symbol, "in MODEL_PORTFOLIO_III."
+        print("No(symbol", mp3_symbol, "in MODEL_PORTFOLIO_III.")
         exit()
 
 add_map('FSHBX', 'DLSNX')
@@ -80,7 +80,7 @@ def map_key_to_mp3(key2map):
     if key2map in MAP_SECURITY:
         del MAP_UNUSED[key2map]
         return MAP_SECURITY[key2map]
-    print 'No map for symbol', key2map
+    print('No(map for symbol', key2map)
     exit()
 
 ##################################################################################################
@@ -144,14 +144,14 @@ def read_input_file(input_file):
             for pattern in [re.compile(r'\s*$'),
                             re.compile(r'\tSecurity\tSymbol\tShares\tQuote/Price\test\tCost'),
                             re.compile(r'\t\*Placeholder'),
-                            re.compile(r'\t\TOTAL Investments')
+                            re.compile(r'\tTOTAL Investments')
                            ]:
                 match = pattern.match(line)
                 if match:
                     #ignore this line
                     break
             else:
-                print "Unexpected line-->"+line
+                print("Unexpected line-->"+line)
                 exit()
 
     fhandle.close()
@@ -168,11 +168,12 @@ def current_holdings_report(report_date, cash, net_worth, security_dict):
             dollars = '%.2f' % dollars
         if isinstance(percentage, float):
             percentage = '%.2f' % percentage
-        print '%-18s' % symbol, \
+        print('%-18s' % symbol, \
               '%-40s' % name, \
               '%10s' % dollars, \
               '%6s' % percentage, \
-              '%5s' % mp3symbol
+              '%5s' % mp3symbol \
+             )
 
     ##############################################################################################
     def holdings_columns():
@@ -185,7 +186,7 @@ def current_holdings_report(report_date, cash, net_worth, security_dict):
                      )
 
     ##############################################################################################
-    print '\n                          ACTUAL HOLDINGS AS OF', report_date, '\n'
+    print('\n                          ACTUAL HOLDINGS AS OF', report_date, '\n')
     holdings_columns()
     holdings_line('Symbol', 'Security Name', 'Value', '%', 'MPIII')
     holdings_columns()
@@ -237,13 +238,14 @@ def mp3_report(cash, net_worth, actual_holdings):
             dollars_actual = '%.2f' % dollars_actual
         if isinstance(diff_dollars, float):
             diff_dollars = '%.2f' % diff_dollars
-        print '%-6s' % symbol, \
+        print('%-6s' % symbol, \
               '%-35s' % name, \
               '%9s' % percent_desired, \
               '%8s' % percent_actual, \
               '%13s' % dollars_desired, \
               '%12s' % dollars_actual, \
-              '%12s' % diff_dollars
+              '%12s' % diff_dollars \
+             )
 
     def mp3_columns():
         '''Display horizontal lines in the Model Portfolio III report'''
@@ -256,7 +258,7 @@ def mp3_report(cash, net_worth, actual_holdings):
                 '------------',
                )
 
-    print '\n                                MODEL PORTFOLIO III\n'
+    print('\n                                MODEL PORTFOLIO III\n')
     mp3_columns()
     mp3line('Symbol',
             'Security Name',
@@ -304,11 +306,7 @@ def mp3_report(cash, net_worth, actual_holdings):
            )
 
     if int((total_actual_value + 0.005) * 100) != int((total_desired_value + 0.005) * 100):
-        print 'Something is wrong.  Things don\'t add up.'
-    if total_desired_percent != 100:
-        print 'Something is wrong. Total desired percent is not 100'
-    if total_actual_percent != 100:
-        print 'Something is wrong. Total actual percent is not 100'
+        print('Something is wrong.  Things don\'t add up.')
 
 
 ##################################################################################################
@@ -326,7 +324,7 @@ def main():
     mp3_report(cash, net_worth, actual_holdings)
 
     for key in MAP_UNUSED:
-        print "\nMap for", key, "was not used."
+        print("\nMap for", key, "was not used.")
 
 ##################################################################################################
 main()
