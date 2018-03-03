@@ -45,7 +45,7 @@ MODEL_PORTFOLIO_III['VDAIX'] = {'name':'Vanguard Dividend Appreciation', 'percen
 MODEL_PORTFOLIO_III['VFWIX'] = {'name':'Vanguard FTSE All-World', 'percent':10}
 MODEL_PORTFOLIO_III['VTSMX'] = {'name':'Vanguard Total Stock Market', 'percent':30}
 MODEL_PORTFOLIO_III['DLSNX'] = {'name':'DoubleLine Low Duration Bond', 'percent':20}
-MODEL_PORTFOLIO_III['MWCRX'] = {'name':'MetroWest Unconstrained Bond', 'percent':20}
+MODEL_PORTFOLIO_III['VMMXX'] = {'name':'Vanguard Prime Money Market', 'percent':20}
 MODEL_PORTFOLIO_III['OSTIX'] = {'name':'Osterweis Strategic Income Fund', 'percent':10}
 
 ##################################################################################################
@@ -70,7 +70,7 @@ add_map('SU', 'VTSMX')
 add_map('QQQQ', 'VTSMX')
 add_map('FUSVX', 'VTSMX')
 add_map('FSTVX', 'VTSMX')
-add_map('FTBFX', 'MWCRX')
+add_map('FZFXX', 'VMMXX')
 add_map('HONEYWEL:750021:TS', 'VTSMX')
 
 def map_key_to_mp3(key2map):
