@@ -7,7 +7,7 @@ comparing the holdings listed in Quicken to Bob Brinker's model portfolio III re
 
 To generate the report in Quicken:
     Choose the following menus items:  "Reports", "Investing", "Portfolio Value".
-    When the report is displayed, choose "Export", "Report to Excel Compatible Format".
+    When the report is displayed, choose "Export", "Export to Text".
     A "save file" dialog is displayed.
     Set the "Save as Type" field to "Tab delimited export files (*.txt)".
     Enter the desired file name and click "Save".
@@ -36,17 +36,17 @@ import re
 # The MODEL_PORTFOLIO_III dictionary contains the recommended Model Portfolio III
 # securities and suggested percentages.
 #
-# These values reflect the portfolio recommendations as of January 2018.
+# These values reflect the portfolio recommendations as of July 2020.
 #
 
 MODEL_PORTFOLIO_III = {}
-MODEL_PORTFOLIO_III['AKREX'] = {'name':'Akre Focus Fund', 'percent':5}
-MODEL_PORTFOLIO_III['VDAIX'] = {'name':'Vanguard Dividend Appreciation', 'percent':5}
-MODEL_PORTFOLIO_III['VFWIX'] = {'name':'Vanguard FTSE All-World', 'percent':10}
-MODEL_PORTFOLIO_III['VTSMX'] = {'name':'Vanguard Total Stock Market', 'percent':30}
-MODEL_PORTFOLIO_III['DLSNX'] = {'name':'DoubleLine Low Duration Bond', 'percent':20}
-MODEL_PORTFOLIO_III['VMMXX'] = {'name':'Vanguard Prime Money Market', 'percent':20}
-MODEL_PORTFOLIO_III['OSTIX'] = {'name':'Osterweis Strategic Income Fund', 'percent':10}
+MODEL_PORTFOLIO_III['AKREX'] = {'name':'Akre Focus Fund',                      'percent':5}
+MODEL_PORTFOLIO_III['VDADX'] = {'name':'Vanguard Dividend Appreciation',       'percent':5}
+MODEL_PORTFOLIO_III['VHGEX'] = {'name':'Vanguard Global Equity',               'percent':10}
+MODEL_PORTFOLIO_III['VTSAX'] = {'name':'Vanguard Total Stock Market',          'percent':30}
+MODEL_PORTFOLIO_III['DLSNX'] = {'name':'DoubleLine Low Duration Bond',         'percent':20}
+MODEL_PORTFOLIO_III['OSTIX'] = {'name':'Osterweis Strategic Income Fund',      'percent':10}
+MODEL_PORTFOLIO_III['VFSTX'] = {'name':'Vanguard Short-term Investment Grade', 'percent':20}
 
 ##################################################################################################
 # The MAP_SECURITY dictionary maps a non-Model Portfolio III security symbol to the corresponding
@@ -61,17 +61,17 @@ def add_map(symbol, mp3_symbol):
         MAP_SECURITY[symbol] = mp3_symbol
         MAP_UNUSED[symbol] = 0
     else:
-        print("No(symbol", mp3_symbol, "in MODEL_PORTFOLIO_III.")
+        print("No symbol", mp3_symbol, "in MODEL_PORTFOLIO_III.")
         exit()
 
 add_map('FSHBX', 'DLSNX')
-add_map('FSICX', 'OSTIX')
-add_map('SU', 'VTSMX')
-add_map('QQQQ', 'VTSMX')
-add_map('FUSVX', 'VTSMX')
-add_map('FSTVX', 'VTSMX')
-add_map('FZFXX', 'VMMXX')
-add_map('HONEYWEL:750021:TS', 'VTSMX')
+add_map('FADMX', 'OSTIX')
+add_map('QQQ',   'VTSAX')
+add_map('FXAIX', 'VTSAX')
+add_map('FSKAX', 'VTSAX')
+add_map('VFWAX', 'VHGEX')
+add_map('FBNDX', 'VFSTX')
+                    
 
 def map_key_to_mp3(key2map):
     '''Map a security symbol to its matching symbol in Model Portfolio III'''
@@ -80,7 +80,7 @@ def map_key_to_mp3(key2map):
     if key2map in MAP_SECURITY:
         del MAP_UNUSED[key2map]
         return MAP_SECURITY[key2map]
-    print('No(map for symbol', key2map)
+    print('No map for symbol', key2map)
     exit()
 
 ##################################################################################################
@@ -105,18 +105,19 @@ def read_input_file(input_file):
     ##############################################################################################
     def security_parse_pattern(input_line):
         '''matching function to recognize the security lines of the portforlio value report'''
-        mymatch = re.compile(r'\t+([\w\- ]+)\t+([A-Z0-9:]*)'
-                             r'\t(\d+(,\d\d\d)*.\d\d\d)'
-                             r'\t(\d+.\d\d\d)'
-                             r'\t\*?'
-                             r'\t+(-?\d+(,\d\d\d)*.\d\d)'
-                             r'\t+(-?\d+(,\d\d\d)*.\d\d)\*?'
-                             r'\t+(\d+(,\d\d\d)*.\d\d)'
+        mymatch = re.compile(r'\t+([\w\- ]+)\t+([A-Z0-9:]*)'    # match security name and symbol
+                             r'\t(\d+(,\d\d\d)*.\d\d\d)'        # match number of shares
+                             r'\t(\d+.\d\d\d)'                  # match price
+                             r'\t\*?'                           # match est
+                             r'\t+(-?\d+(,\d\d\d)*.\d\d)'       # match cost basis
+                             r'\t+(-?\d+(,\d\d\d)*.\d\d)*\*?'    # match gain/loss
+                             r'\t+(\d+(,\d\d\d)*.\d\d)'         # match balance
                             ).match(input_line)
         if mymatch is None:
             return None
         return {'name':mymatch.group(1),
                 'symbol':mymatch.group(2),
+                'shares':float(mymatch.group(3).replace(',', '')),
                 'balance':float(mymatch.group(10).replace(',', ''))
                }
 
@@ -133,12 +134,16 @@ def read_input_file(input_file):
                 continue
             parse_dict = security_parse_pattern(line)
             if parse_dict is not None:
-                if parse_dict['symbol']:
-                    security_dict[parse_dict['symbol']] = \
-                        {'name':parse_dict['name'], 'balance':parse_dict['balance']}
+                if parse_dict['shares'] != 0:
+                    if parse_dict['symbol']:
+                        security_dict[parse_dict['symbol']] = \
+                            {'name':parse_dict['name'], 'balance':parse_dict['balance']}
+                    else:
+                        #There is no stock symbol on the input line.  This happens with a money
+                        #market entry with zero balance so I ignore it.
+                        pass
                 else:
-                    #There is no stock symbol on the input line.  This happens with a money
-                    #market entry with zero balance so I ignore it.
+                    # Share balance is zero
                     pass
                 continue
             for pattern in [re.compile(r'\s*$'),
@@ -162,33 +167,50 @@ def read_input_file(input_file):
 def current_holdings_report(report_date, cash, net_worth, security_dict):
     '''!'''
     ##############################################################################################
-    def holdings_line(symbol, name, dollars, percentage, mp3symbol):
+    def holdings_symbols_line(symbol, name):
+        print('%-8s' % symbol, \
+              '%-40s' % name, \
+             )
+
+    ##############################################################################################
+    def holdings_symbols_columns():
+        holdings_symbols_line('--------',
+                              '----------------------------------------'
+                             )
+
+    ##############################################################################################
+    def holdings_line(symbol, dollars, percentage):
         '''format a line in the holdings report'''
         if isinstance(dollars, float):
             dollars = '%.2f' % dollars
         if isinstance(percentage, float):
             percentage = '%.2f' % percentage
         print('%-18s' % symbol, \
-              '%-40s' % name, \
               '%10s' % dollars, \
-              '%6s' % percentage, \
-              '%5s' % mp3symbol \
+              '%6s' % percentage \
              )
 
     ##############################################################################################
     def holdings_columns():
-        '''dispaly horizontal lines in the holdings report'''
+        '''display horizontal lines in the holdings report'''
         holdings_line('------------------',
-                      '----------------------------------------',
                       '----------',
-                      '------',
-                      '-----'
+                      '------'
                      )
 
     ##############################################################################################
-    print('\n                          ACTUAL HOLDINGS AS OF', report_date, '\n')
+    print('\n       ACTUAL HOLDINGS AS OF', report_date, '\n')
+
+    holdings_symbols_columns()
+    holdings_symbols_line('Symbol', 'Security Name')
+    holdings_symbols_columns()
+    for key in security_dict:
+        holdings_symbols_line(key, security_dict[key]['name'])
+    holdings_symbols_columns()
+    print('\n')
+
     holdings_columns()
-    holdings_line('Symbol', 'Security Name', 'Value', '%', 'MPIII')
+    holdings_line('Symbol', 'Value', '%')
     holdings_columns()
 
     actual_holdings = {}
@@ -201,16 +223,14 @@ def current_holdings_report(report_date, cash, net_worth, security_dict):
             actual_holdings[actualskey] = security_dict[key]['balance']
         actual_percent = security_dict[key]['balance'] / net_worth * 100
         total_actual_percent += actual_percent
-        holdings_line(key,
-                      security_dict[key]['name'],
+        holdings_line(key + ' (' + actualskey + ')',
                       security_dict[key]['balance'],
                       actual_percent,
-                      actualskey
                      )
 
-    holdings_line('Cash', '', cash, '', '')
+    holdings_line('Cash', cash, '')
     holdings_columns()
-    holdings_line('Total', '', net_worth+cash, total_actual_percent, '')
+    holdings_line('Total', net_worth+cash, total_actual_percent)
     return actual_holdings
 
 ##################################################################################################
@@ -219,8 +239,13 @@ def mp3_report(cash, net_worth, actual_holdings):
     ##############################################################################################
     # Now generate the model portfolio III report
     #
+    def mp3symbolsline(symbol, name):
+        print('%-6s' % symbol, \
+              '%-35s' % name, \
+             )
+
+    ##############################################################################################
     def mp3line(symbol,
-                name,
                 percent_desired,
                 percent_actual,
                 dollars_desired,
@@ -239,7 +264,6 @@ def mp3_report(cash, net_worth, actual_holdings):
         if isinstance(diff_dollars, float):
             diff_dollars = '%.2f' % diff_dollars
         print('%-6s' % symbol, \
-              '%-35s' % name, \
               '%9s' % percent_desired, \
               '%8s' % percent_actual, \
               '%13s' % dollars_desired, \
@@ -247,10 +271,15 @@ def mp3_report(cash, net_worth, actual_holdings):
               '%12s' % diff_dollars \
              )
 
+    ##############################################################################################
+    def mp3_symbolscolumns():
+        '''Display horizontal lines in the Model Portfolio III report'''
+        mp3symbolsline('------', '-----------------------------------------')
+
+    ##############################################################################################
     def mp3_columns():
         '''Display horizontal lines in the Model Portfolio III report'''
         mp3line('------',
-                '-----------------------------------',
                 '---------',
                 '--------',
                 '-------------',
@@ -258,10 +287,20 @@ def mp3_report(cash, net_worth, actual_holdings):
                 '------------',
                )
 
-    print('\n                                MODEL PORTFOLIO III\n')
+    print('\n       MODEL PORTFOLIO III\n')
+
+    ##############################################################################################
+    mp3_symbolscolumns()
+    mp3symbolsline('Symbol', 'Security Name')
+    mp3_symbolscolumns()
+    for key in MODEL_PORTFOLIO_III:
+        mp3symbolsline(key, MODEL_PORTFOLIO_III[key]['name'])
+    mp3_symbolscolumns()
+    print('\n')
+
+    ##############################################################################################
     mp3_columns()
     mp3line('Symbol',
-            'Security Name',
             'Desired %',
             'Actual %',
             'Desired $',
@@ -285,19 +324,17 @@ def mp3_report(cash, net_worth, actual_holdings):
 
         total_actual_value += actual_holdings[key]
         mp3line(key,
-                MODEL_PORTFOLIO_III[key]['name'],
                 desired_percent,
                 actual_percent,
                 desired_value,
                 actual_holdings[key],
                 actual_holdings[key] - desired_value
                )
-    mp3line('Cash', '', '', '', cash, cash, '')
+    mp3line('Cash', '', '', cash, cash, '')
     total_actual_value += cash
     total_desired_value += cash
     mp3_columns()
     mp3line('Total',
-            '',
             total_desired_percent,
             total_actual_percent,
             total_desired_value,
